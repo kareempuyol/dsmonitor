@@ -16,12 +16,10 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^2.15.0",
     "zustand": "^5.0.0",
     "i18next": "^24.0.0",
     "react-i18next": "^15.0.0",
-    "sql.js": "^1.12.0",
-    "zod": "^3.24.0"
+    "sql.js": "^1.12.0"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.0",

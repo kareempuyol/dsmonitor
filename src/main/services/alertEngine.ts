@@ -218,7 +218,24 @@ class AlertEngine {
     // Auth errors: no cooldown
     if (cooldownMs === 0) return false
 
-    return elapsed < cooldownMs
+    // Clean up expired cooldown entries
+    if (elapsed >= cooldownMs) {
+      this.cooldowns.delete(rule.id)
+      return false
+    }
+
+    return true
+  }
+
+  /** Periodic cleanup of stale cooldown entries */
+  purgeCooldowns(): void {
+    const now = Date.now()
+    for (const [id, entry] of this.cooldowns) {
+      // Default to 5min — entries older than 10min are definitely stale
+      if (now - entry.lastFiredAt > 600_000) {
+        this.cooldowns.delete(id)
+      }
+    }
   }
 
   /** Reset cooldown for a specific rule (e.g., when user acknowledges) */

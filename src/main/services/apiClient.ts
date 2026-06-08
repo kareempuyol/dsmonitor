@@ -104,7 +104,20 @@ async function electronFetch(options: RequestOptions): Promise<{ status: number;
           else if (response.statusCode === 429) code = 'RATE_LIMITED'
 
           const retryAfter = response.headers['retry-after']
-          const retryMs = retryAfter ? parseInt(retryAfter) * 1000 : undefined
+          let retryMs: number | undefined
+          if (retryAfter) {
+            // Retry-After can be decimal seconds or HTTP-date
+            const parsed = parseInt(retryAfter)
+            if (!isNaN(parsed)) {
+              retryMs = parsed * 1000
+            } else {
+              // Try to parse as HTTP-date
+              const dateVal = Date.parse(retryAfter)
+              if (!isNaN(dateVal)) {
+                retryMs = Math.max(0, dateVal - Date.now())
+              }
+            }
+          }
 
           reject(new ApiError(
             `HTTP ${response.statusCode}: ${body.slice(0, 200)}`,

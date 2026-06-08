@@ -84,6 +84,12 @@ class ApiPoller {
     const statuses: PlatformStatus[] = []
     const changes: MetricsChange[] = []
 
+    // Clean up failure tracking for deleted keys
+    const activeIds = new Set(activeKeys.map(k => k.id as string))
+    for (const id of this.consecutiveFailures.keys()) {
+      if (!activeIds.has(id)) this.consecutiveFailures.delete(id)
+    }
+
     for (const key of activeKeys) {
       const config = getPlatformConfig(key.definitionId as string)
       if (!config) {
@@ -211,7 +217,7 @@ class ApiPoller {
     bus.emit('metrics:delta', delta)
 
     // Emit HUD update
-    const hudMetrics = this.computeHudMetrics(statuses)
+    const hudMetrics = this.computeHudMetrics(statuses, rates)
     bus.emit('hud:update', hudMetrics)
 
     // Database checkpoint
@@ -229,16 +235,21 @@ class ApiPoller {
   /**
    * Compute HUD metrics from all platform statuses
    */
-  private computeHudMetrics(statuses: PlatformStatus[]): HudMetrics {
+  private computeHudMetrics(statuses: PlatformStatus[], rates: BurnRate[]): HudMetrics {
     let todaySpend = 0
     let monthSpend = 0
     let dailyBudgetPercent = 0
     let overallFreshness: PlatformStatus['dataFreshness'] = 'unknown'
 
     for (const s of statuses) {
+      // Sum up today's cost from usage data
+      // Look for any metric that represents current spend
       for (const m of s.metrics) {
-        if (m.key === 'total_usage' || m.key === 'daily_cost') {
+        if (m.key === 'total_usage' || m.key === 'daily_cost' || m.key === 'today_spend') {
           todaySpend += m.value
+        }
+        if (m.key === 'monthly_cost') {
+          monthSpend += m.value
         }
       }
       // Track worst freshness
@@ -247,10 +258,9 @@ class ApiPoller {
       else if (s.dataFreshness === 'fresh' && overallFreshness === 'unknown') overallFreshness = 'fresh'
     }
 
-    // Get burn rate
-    const rates = burnRateEngine.evaluate()
+    // Use already-computed burn rate (avoid double evaluate)
     const combinedRate = rates.length > 0
-      ? rates[0] // Use first for HUD (most relevant)
+      ? rates[0]
       : { hourly: 0, daily: 0, weekly: 0, monthlyProjection: 0, daysRemaining: Infinity, pace: 'on_track' as const, trend: 'stable' as const }
 
     // Check for unacknowledged alerts

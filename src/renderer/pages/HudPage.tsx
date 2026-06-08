@@ -23,14 +23,6 @@ export default function HudPage(): React.ReactElement {
     fetchStatuses()
   }, [])
 
-  // Subscribe to IPC events
-  useEffect(() => {
-    if (!window.electronAPI) return
-    const unsub = window.electronAPI.onHudUpdate(() => {
-      // State updates via store
-    })
-    return () => unsub()
-  }, [])
 
   const configuredInstances = instances.filter(i => i.hasKey && i.status !== 'unconfigured')
   const todaySpend = hudMetrics?.todaySpend ?? 0

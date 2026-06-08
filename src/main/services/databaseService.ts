@@ -318,21 +318,33 @@ class DatabaseService {
 
   getLatestBalance(keyId: string): Record<string, unknown> | null {
     if (!this.db) throw new Error('Database not initialized')
-    const result = this.db.exec(
-      `SELECT * FROM balance_snapshots WHERE key_id = '${keyId}' ORDER BY snapshot_time DESC LIMIT 1`
+    const stmt = this.db.prepare(
+      'SELECT * FROM balance_snapshots WHERE key_id = ? ORDER BY snapshot_time DESC LIMIT 1'
     )
-    if (!result.length || !result[0].values.length) return null
-    return this.rowToObject(result[0].columns, result[0].values[0])
+    stmt.bind([keyId])
+    if (stmt.step()) {
+      const cols = stmt.getColumnNames()
+      const vals = stmt.get()
+      stmt.free()
+      return this.rowToObject(cols, vals)
+    }
+    stmt.free()
+    return null
   }
 
   getBalanceHistory(keyId: string, since: number): Array<Record<string, unknown>> {
     if (!this.db) throw new Error('Database not initialized')
     const sinceStr = new Date(since).toISOString()
-    const result = this.db.exec(
-      `SELECT * FROM balance_snapshots WHERE key_id = '${keyId}' AND snapshot_time >= '${sinceStr}' ORDER BY snapshot_time DESC`
+    const stmt = this.db.prepare(
+      'SELECT * FROM balance_snapshots WHERE key_id = ? AND snapshot_time >= ? ORDER BY snapshot_time DESC'
     )
-    if (!result.length) return []
-    return this.rowsToObjects(result[0])
+    stmt.bind([keyId, sinceStr])
+    const rows: Array<Record<string, unknown>> = []
+    while (stmt.step()) {
+      rows.push(this.rowToObject(stmt.getColumnNames(), stmt.get()))
+    }
+    stmt.free()
+    return rows
   }
 
   // ==========================================================
@@ -353,11 +365,16 @@ class DatabaseService {
 
   getVelocityHistory(keyId: string, period: 'hourly' | 'daily', since: string): Array<Record<string, unknown>> {
     if (!this.db) throw new Error('Database not initialized')
-    const result = this.db.exec(
-      `SELECT * FROM usage_velocity WHERE key_id = '${keyId}' AND period = '${period}' AND period_start >= '${since}' ORDER BY period_start DESC`
+    const stmt = this.db.prepare(
+      'SELECT * FROM usage_velocity WHERE key_id = ? AND period = ? AND period_start >= ? ORDER BY period_start DESC'
     )
-    if (!result.length) return []
-    return this.rowsToObjects(result[0])
+    stmt.bind([keyId, period, since])
+    const rows: Array<Record<string, unknown>> = []
+    while (stmt.step()) {
+      rows.push(this.rowToObject(stmt.getColumnNames(), stmt.get()))
+    }
+    stmt.free()
+    return rows
   }
 
   // ==========================================================
@@ -420,12 +437,10 @@ class DatabaseService {
     }
 
     sql += ' ORDER BY record_date DESC, id DESC'
+    sql += ' LIMIT ? OFFSET ?'
+    params.push(filters.limit ?? 50, filters.offset ?? 0)
 
-    const limit = filters.limit ?? 50
-    const offset = filters.offset ?? 0
-    sql += ` LIMIT ${limit} OFFSET ${offset}`
-
-    const result = this.db.exec(sql)
+    const result = this.db.exec(sql, params)
     if (!result.length) return []
     return this.rowsToObjects(result[0])
   }
@@ -433,19 +448,25 @@ class DatabaseService {
   getUsageSummary(keyId: string, groupBy: 'model' | 'day'): Array<Record<string, unknown>> {
     if (!this.db) throw new Error('Database not initialized')
     const groupCol = groupBy === 'model' ? 'model_name' : 'record_date'
-    const result = this.db.exec(
+    // groupCol is internally controlled (only 'model' or 'day'), safe from injection
+    const stmt = this.db.prepare(
       `SELECT ${groupCol} as group_key,
               SUM(tokens_input) as total_tokens_input,
               SUM(tokens_output) as total_tokens_output,
               SUM(cost) as total_cost,
               COUNT(*) as record_count
        FROM usage_records
-       WHERE key_id = '${keyId}'
+       WHERE key_id = ?
        GROUP BY ${groupCol}
        ORDER BY total_cost DESC`
     )
-    if (!result.length) return []
-    return this.rowsToObjects(result[0])
+    stmt.bind([keyId])
+    const rows: Array<Record<string, unknown>> = []
+    while (stmt.step()) {
+      rows.push(this.rowToObject(stmt.getColumnNames(), stmt.get()))
+    }
+    stmt.free()
+    return rows
   }
 
   // ==========================================================
@@ -483,6 +504,23 @@ class DatabaseService {
     this.save()
   }
 
+  updateAlertRule(id: string, data: Record<string, unknown>): void {
+    if (!this.db) throw new Error('Database not initialized')
+    const allowedCols = ['name', 'metric', 'condition', 'threshold', 'severity', 'notify_channels', 'cooldown_ms', 'enabled']
+    const sets: string[] = []
+    const vals: unknown[] = []
+    for (const [key, value] of Object.entries(data)) {
+      const col = key.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase())
+      if (!allowedCols.includes(col)) continue
+      sets.push(`${col} = ?`)
+      vals.push(value)
+    }
+    if (sets.length === 0) return
+    vals.push(id)
+    this.db.run(`UPDATE alert_rules SET ${sets.join(', ')} WHERE id = ?`, vals)
+    this.save()
+  }
+
   deleteAlertRule(id: string): void {
     if (!this.db) throw new Error('Database not initialized')
     this.db.run('DELETE FROM alert_rules WHERE id = ?', [id])
@@ -500,15 +538,20 @@ class DatabaseService {
 
   getAlertHistory(limit: number = 50): Array<Record<string, unknown>> {
     if (!this.db) throw new Error('Database not initialized')
-    const result = this.db.exec(
+    const stmt = this.db.prepare(
       `SELECT ah.*, ar.name as rule_name
        FROM alert_history ah
        LEFT JOIN alert_rules ar ON ah.rule_id = ar.id
        ORDER BY ah.created_at DESC
-       LIMIT ${limit}`
+       LIMIT ?`
     )
-    if (!result.length) return []
-    return this.rowsToObjects(result[0])
+    stmt.bind([limit])
+    const rows: Array<Record<string, unknown>> = []
+    while (stmt.step()) {
+      rows.push(this.rowToObject(stmt.getColumnNames(), stmt.get()))
+    }
+    stmt.free()
+    return rows
   }
 
   acknowledgeAlert(id: number): void {
@@ -552,11 +595,43 @@ class DatabaseService {
   // Database lifecycle
   // ==========================================================
 
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null
+  private savePending = false
+
+  /** Debounced save — batches writes to avoid excessive disk I/O */
   save(): void {
     if (!this.db) return
-    const data = this.db.export()
-    const buffer = Buffer.from(data)
-    fs.writeFileSync(this.dbPath, buffer)
+    if (this.saveTimeout) {
+      this.savePending = true
+      return
+    }
+    this.savePending = false
+    this.saveTimeout = setTimeout(() => {
+      this.saveTimeout = null
+      try {
+        const data = this.db!.export()
+        const buffer = Buffer.from(data)
+        fs.writeFileSync(this.dbPath, buffer)
+        if (this.savePending) {
+          this.savePending = false
+          this.save()
+        }
+      } catch (err) {
+        console.error('[DatabaseService] Save failed:', (err as Error).message)
+      }
+    }, 500) // Debounce writes within 500ms window
+  }
+
+  /** Force immediate save (called on close/quit) */
+  flush(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout)
+      this.saveTimeout = null
+    }
+    if (this.db) {
+      const data = this.db.export()
+      fs.writeFileSync(this.dbPath, Buffer.from(data))
+    }
   }
 
   /** Run WAL checkpoint to prevent unlimited WAL file growth */
@@ -571,7 +646,7 @@ class DatabaseService {
 
   close(): void {
     if (!this.db) return
-    this.save()
+    this.flush()
     this.db.close()
     this.db = null
     console.log('[DatabaseService] Closed')

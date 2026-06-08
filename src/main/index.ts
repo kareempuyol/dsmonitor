@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, Notification, screen } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import path from 'path'
 import { randomUUID } from 'crypto'
@@ -95,7 +95,7 @@ function createHudWindow(): BrowserWindow {
   })
 
   // Position at top-right initially
-  const { workArea } = require('electron').screen.getPrimaryDisplay()
+  const { workArea } = screen.getPrimaryDisplay()
   win.setPosition(workArea.x + workArea.width - 300, workArea.y + 12)
 
   // Edge snapping
@@ -119,8 +119,7 @@ function createHudWindow(): BrowserWindow {
 
 function snapToEdge(win: BrowserWindow): void {
   const SNAP_THRESHOLD = 12
-  const display = require('electron').screen.getPrimaryDisplay()
-  const { workArea } = display
+  const { workArea } = screen.getPrimaryDisplay()
   const [x, y] = win.getPosition()
   const [w, h] = win.getSize()
 
@@ -193,7 +192,7 @@ function createTray(): Tray {
         if (!mainWindow) mainWindow = createMainWindow()
         mainWindow.show()
         mainWindow.focus()
-        mainWindow.webContents.send('navigate', '/settings')
+        mainWindow.webContents.send(MAIN_EVENTS.NAVIGATE, '/settings')
       }
     },
     { type: 'separator' },
@@ -356,7 +355,7 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(IPC.ALERT_UPDATE_RULE, (_event, id: string, data: Record<string, unknown>) => {
-    databaseService.updateApiKey(id, data)
+    databaseService.updateAlertRule(id, data)
   })
 
   ipcMain.handle(IPC.ALERT_DELETE_RULE, (_event, id: string) => {
@@ -422,7 +421,7 @@ function registerIpcHandlers(): void {
 function forwardEvents(): void {
   bus.on('metrics:delta', (delta: MetricsDelta) => {
     mainWindow?.webContents.send(MAIN_EVENTS.METRICS_UPDATE, delta)
-    hudWindow?.webContents.send(MAIN_EVENTS.METRICS_UPDATE, delta)
+    // HUD only needs HUD_UPDATE (smaller payload), not full metrics delta
   })
 
   bus.on('hud:update', (metrics: HudMetrics) => {
@@ -484,8 +483,11 @@ if (!gotTheLock) {
     tray = createTray()
 
     // Load settings
-    const settings = databaseService.getSettings() as unknown as AppSettings
-    const startMinimized = settings.startMinimizedToTray ?? DEFAULT_SETTINGS.startMinimizedToTray
+    const settings = databaseService.getSettings() as unknown as Record<string, unknown>
+    // DB stores settings as JSON strings — coerce properly
+    const startMinimized = settings.startMinimizedToTray !== undefined
+      ? String(settings.startMinimizedToTray) === 'true'
+      : DEFAULT_SETTINGS.startMinimizedToTray
 
     // Create main window
     mainWindow = createMainWindow()

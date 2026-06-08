@@ -13,7 +13,6 @@ export default function SettingsPage({ onBack }: Props): React.ReactElement {
   const definitions = usePlatformStore(s => s.definitions)
   const addKey = usePlatformStore(s => s.addKey)
   const removeKey = usePlatformStore(s => s.removeKey)
-  const testConnection = usePlatformStore(s => s.testConnection)
 
   // Form state
   const [selectedPlatform, setSelectedPlatform] = useState('')
@@ -182,9 +181,9 @@ export default function SettingsPage({ onBack }: Props): React.ReactElement {
                     <div className="text-sm text-zinc-300">Polling Interval / 轮询间隔</div>
                     <div className="text-xs text-zinc-500">How often to fetch data from APIs</div>
                   </div>
-                  <select className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200">
+                  <select defaultValue="300000" className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200">
                     <option value="60000">1 minute</option>
-                    <option value="300000" selected>5 minutes</option>
+                    <option value="300000">5 minutes</option>
                     <option value="600000">10 minutes</option>
                     <option value="1800000">30 minutes</option>
                   </select>
@@ -279,8 +278,8 @@ export default function SettingsPage({ onBack }: Props): React.ReactElement {
                   <div>
                     <div className="text-sm text-zinc-300">Language / 语言</div>
                   </div>
-                  <select className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200">
-                    <option value="zh-CN" selected>中文</option>
+                  <select defaultValue="zh-CN" className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200">
+                    <option value="zh-CN">中文</option>
                     <option value="en">English</option>
                   </select>
                 </div>

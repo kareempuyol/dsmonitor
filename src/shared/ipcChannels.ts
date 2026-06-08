@@ -67,5 +67,6 @@ export const MAIN_EVENTS = {
   POLLING_STATUS: 'polling:status',
   ALERT_TRIGGERED: 'alert:triggered',
   HUD_UPDATE: 'hud:update',
-  DISCOVERY_PROGRESS: 'discovery:progress'
+  DISCOVERY_PROGRESS: 'discovery:progress',
+  NAVIGATE: 'navigate'
 } as const

@@ -149,8 +149,8 @@ const electronAPI = {
   /** Listen for navigation commands from main process (e.g. tray menu → Settings) */
   onNavigate: (callback: (route: string) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, route: string): void => callback(route)
-    ipcRenderer.on('navigate', handler)
-    return () => { ipcRenderer.removeListener('navigate', handler) }
+    ipcRenderer.on(MAIN_EVENTS.NAVIGATE, handler)
+    return () => { ipcRenderer.removeListener(MAIN_EVENTS.NAVIGATE, handler) }
   }
 }
 
