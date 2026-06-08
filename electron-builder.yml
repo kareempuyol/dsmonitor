@@ -8,26 +8,20 @@ directories:
 
 files:
   - out/**/*
-  - "!node_modules/**/*"
 
 asar: true
+
+electronDist: ./node_modules/electron/dist
 
 win:
   target:
     - portable
-  icon: resources/icon.png
   artifactName: "${productName}-${version}-portable-${arch}.${ext}"
+  sign: null
 
 portable:
   artifactName: "${productName}-${version}-portable-${arch}.${ext}"
   requestExecutionLevel: user
-
-nsis:
-  oneClick: false
-  perMachine: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
 
 npmRebuild: false
 publish: null
