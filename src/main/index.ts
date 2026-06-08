@@ -247,7 +247,7 @@ function registerIpcHandlers(): void {
     }))
   })
 
-  ipcMain.handle(IPC.KEY_CREATE, (_event, data: {
+  ipcMain.handle(IPC.KEY_CREATE, async (_event, data: {
     definitionId: string; label: string; apiKey: string; dailyBudget?: number; monthlyBudget?: number
   }) => {
     const id = randomUUID()
@@ -260,10 +260,33 @@ function registerIpcHandlers(): void {
       dailyBudget: data.dailyBudget,
       monthlyBudget: data.monthlyBudget
     })
+
+    // Immediately test connection to validate the key
+    const config = getPlatformConfig(data.definitionId)
+    if (config) {
+      try {
+        const result = await apiClient.testConnection(config, data.apiKey, {})
+        if (result.ok) {
+          databaseService.updateApiKeyStatus(id, 'ok')
+          console.log(`[IPC] Key ${id} validated: ${result.message}`)
+        } else {
+          databaseService.updateApiKeyStatus(id, 'error', result.message)
+          console.warn(`[IPC] Key ${id} validation failed: ${result.message}`)
+        }
+      } catch (err) {
+        databaseService.updateApiKeyStatus(id, 'error', (err as Error).message)
+        console.error(`[IPC] Key ${id} test error:`, (err as Error).message)
+      }
+    }
+
     // Restart poller to include new key
     apiPoller.stop()
     const settings = databaseService.getSettings()
     apiPoller.start((settings.pollingIntervalMs as number) || DEFAULT_POLL_INTERVAL_MS)
+
+    // Force immediate poll for the new key
+    setTimeout(() => apiPoller.forcePoll(), 1000)
+
     return databaseService.getApiKey(id)
   })
 
