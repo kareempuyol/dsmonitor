@@ -1,0 +1,33 @@
+appId: com.dsmonitor.app
+productName: dsmonitor
+copyright: Copyright 2026
+
+directories:
+  output: dist
+  buildResources: resources
+
+files:
+  - out/**/*
+  - "!node_modules/**/*"
+
+asar: true
+
+win:
+  target:
+    - portable
+  icon: resources/icon.png
+  artifactName: "${productName}-${version}-portable-${arch}.${ext}"
+
+portable:
+  artifactName: "${productName}-${version}-portable-${arch}.${ext}"
+  requestExecutionLevel: user
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+npmRebuild: false
+publish: null

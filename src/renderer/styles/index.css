@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* === dsmonitor — Terminal Neo-Brutalist Theme === */
+
+@theme {
+  --color-bg-deep: #09090B;
+  --color-bg-surface: #18181B;
+  --color-bg-elevated: #27272A;
+  --color-border-default: #3F3F46;
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #A1A1AA;
+  --color-text-muted: #71717A;
+  --color-accent-brand: #A78BFA;
+  --color-accent-success: #34D399;
+  --color-accent-warning: #FBBF24;
+  --color-accent-danger: #F87171;
+  --color-accent-chart: #818CF8;
+
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  --font-sans: 'Inter', 'Microsoft YaHei', sans-serif;
+}
+
+/* Glass / Acrylic surface */
+.glass-surface {
+  background: rgba(18, 18, 24, 0.82);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* All numbers use tabular mono */
+.tabular-nums-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* HUD drag region */
+.hud-drag {
+  -webkit-app-region: drag;
+}
+.hud-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #27272A 25%, #3F3F46 50%, #27272A 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3F3F46;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525B;
+}
