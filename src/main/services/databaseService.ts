@@ -115,7 +115,7 @@ INSERT OR IGNORE INTO platform_definitions (id, display_name, display_name_cn, c
 -- Default settings
 INSERT OR IGNORE INTO app_settings (key, value) VALUES
   ('pollingIntervalMs', '300000'),
-  ('startMinimizedToTray', 'true'),
+  ('startMinimizedToTray', 'false'),
   ('hudEnabled', 'false'),
   ('hudCompact', 'false'),
   ('hudOpacity', '0.82'),

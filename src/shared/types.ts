@@ -196,7 +196,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   pollingIntervalMs: 300000, // 5 minutes
-  startMinimizedToTray: true,
+  startMinimizedToTray: false,
   hudEnabled: false,
   hudCompact: false,
   hudOpacity: 0.82,
