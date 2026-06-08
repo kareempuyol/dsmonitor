@@ -35,10 +35,10 @@ export const useBalanceStore = create<BalanceState>((set, get) => ({
       }
       set({ statuses, isLoading: false })
 
-      // Also fetch burn rate
+      // Also fetch burn rate (API returns array, take first)
       try {
-        const rate = await window.electronAPI.getBurnRate()
-        set({ burnRate: rate })
+        const rates = await window.electronAPI.getBurnRate()
+        set({ burnRate: Array.isArray(rates) ? rates[0] ?? null : null })
       } catch { /* burn rate is optional */ }
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false })

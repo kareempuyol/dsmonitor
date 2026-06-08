@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useBalanceStore } from '../stores/useBalanceStore'
 import { usePlatformStore } from '../stores/usePlatformStore'
 import { PLATFORM_COLORS, DEFAULT_PLATFORM_COLOR } from '@shared/constants'
-import type { PlatformStatus } from '@shared/types'
+import { safeFixed } from '../components/ErrorBoundary'
 
 // ============================================================
 // HUD Page — Mini floating bar, always-on-top
@@ -70,7 +70,7 @@ export default function HudPage(): React.ReactElement {
             freshness === 'stale' ? 'text-amber-400/80' :
             'text-zinc-50'
           }`}>
-            ¥{todaySpend.toFixed(2)}
+            ¥{safeFixed(todaySpend)}
           </span>
         </div>
 
@@ -88,12 +88,12 @@ export default function HudPage(): React.ReactElement {
           {/* Summary */}
           <div className="text-center">
             <div className="text-2xl font-bold tabular-nums-mono text-zinc-100">
-              ¥{todaySpend.toFixed(2)}
+              ¥{safeFixed(todaySpend)}
             </div>
             <div className="text-xs text-zinc-500 mt-0.5">Today / 今天</div>
             {monthSpend > 0 && (
               <div className="text-xs text-zinc-600 mt-0.5">
-                ¥{monthSpend.toFixed(2)} this month
+                ¥{safeFixed(monthSpend)} this month
               </div>
             )}
           </div>

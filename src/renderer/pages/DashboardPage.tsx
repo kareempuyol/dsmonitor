@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useBalanceStore } from '../stores/useBalanceStore'
 import { usePlatformStore } from '../stores/usePlatformStore'
 import { PLATFORM_COLORS, DEFAULT_PLATFORM_COLOR } from '@shared/constants'
-import type { PlatformStatus, PlatformMetric } from '@shared/types'
+import { safeFixed, safeLocale } from '../components/ErrorBoundary'
+import type { PlatformStatus } from '@shared/types'
 
 // ============================================================
 // Dashboard Page — Main analytics view
@@ -80,19 +81,19 @@ export default function DashboardPage({ onNavigateSettings }: Props): React.Reac
           <StatCard
             label="Today"
             labelCn="今天"
-            value={hudMetrics?.todaySpend ? `¥${hudMetrics.todaySpend.toFixed(2)}` : '—'}
+            value={hudMetrics !== null ? `¥${safeFixed(hudMetrics.todaySpend)}` : '—'}
             subtitle={burnRate ? `${burnRate.trend === 'increasing' ? '↑' : burnRate.trend === 'decreasing' ? '↓' : '→'} trend` : undefined}
           />
           <StatCard
             label="Burn Rate"
             labelCn="烧钱速率"
-            value={burnRate ? `¥${burnRate.hourly.toFixed(2)}/h` : '—'}
-            subtitle={burnRate ? `~¥${burnRate.daily.toFixed(2)}/day` : undefined}
+            value={burnRate ? `¥${safeFixed(burnRate.hourly)}/h` : '—'}
+            subtitle={burnRate ? `~¥${safeFixed(burnRate.daily)}/day` : undefined}
           />
           <StatCard
             label="Month Projection"
             labelCn="本月预测"
-            value={burnRate ? `¥${burnRate.monthlyProjection.toFixed(0)}` : '—'}
+            value={burnRate ? `¥${safeFixed(burnRate.monthlyProjection, 0)}` : '—'}
             subtitle={burnRate ? `${burnRate.pace.replace('_', ' ')}` : undefined}
             alert={burnRate?.pace === 'critical' || burnRate?.pace === 'over_budget'}
           />
@@ -195,7 +196,7 @@ function PlatformCard({ instance, status }: {
                 m.severity === 'critical' ? 'text-red-400' :
                 m.severity === 'warning' ? 'text-amber-400' : 'text-zinc-200'
               }`}>
-                {m.value.toLocaleString()}{m.unit}
+                {safeLocale(m.value)}{m.unit}
               </span>
             </div>
           ))}
